@@ -1,0 +1,41 @@
+version: "3.8"
+name: laravel-app
+services:
+  app-db:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    env_file:
+      - .env
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: mysqladmin ping -h 127.0.0.1 -u user --password=password
+      start_period: 5s
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - "./scripts/01_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql"
+      - mysql_data:/var/lib/mysql
+
+  app:
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile
+    container_name: laravel_app
+    restart: always
+    ports:
+      - "8000:80"
+    depends_on:
+      - app-db
+    env_file:
+      - .env
+    command: bash -c "php artisan migrate --force && apache2-foreground"
+
+volumes:
+  mysql_data:
